@@ -1,0 +1,919 @@
+{
+  "info": {
+    "name": "Safe Data Access Platform - Security Enhanced API",
+    "description": "Complete API collection for the 9-layer defense-in-depth privacy platform. Includes all new security modules: cryptography, anonymization, differential privacy, risk scoring, zero trust, consent engine, query firewall, audit chain, and release pipeline.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "2.0.0"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "token", "value": "" },
+    { "key": "adminToken", "value": "" },
+    { "key": "researcherToken", "value": "" },
+    { "key": "dataset_id", "value": "" },
+    { "key": "consent_id", "value": "" },
+    { "key": "release_id", "value": "" },
+    { "key": "execution_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "0. Health & System Status",
+      "item": [
+        {
+          "name": "GET /health - Health Check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Health check passes', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.equal('healthy');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/status - API Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "status"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/security/status - Security Layer Status (No Auth)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// This should return 401 without auth",
+                  "pm.test('Security status requires authentication', function() {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/security/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "security", "status"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/security/status - Security Layer Status (With Auth)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// This should return 200 with auth",
+                  "pm.test('Security status works with authentication', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.layers).to.be.an('object');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/security/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "security", "status"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "1. Authentication (Zero Trust)",
+      "item": [
+        {
+          "name": "POST /api/auth/login - Admin Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('adminToken', jsonData.token);",
+                  "    pm.collectionVariables.set('token', jsonData.token);",
+                  "    console.log('✓ Admin token saved');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"userId\": \"admin\",\n    \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/auth/register - Register Researcher",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const jsonData = pm.response.json();",
+                  "    console.log('✓ Researcher registered:', jsonData.newUserId || 'researcher');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"userId\": \"researcher\",\n    \"password\": \"researcher123\",\n    \"role\": \"researcher\",\n    \"purposeScope\": [\"research\", \"statistical_analysis\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/auth/login - Researcher Login",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Wait for registration to complete",
+                  "setTimeout(function(){}, 500);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('researcherToken', jsonData.token);",
+                  "    console.log('✓ Researcher token saved');",
+                  "} else {",
+                  "    console.log('⚠ Researcher login failed:', pm.response.text());",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"userId\": \"researcher\",\n    \"password\": \"researcher123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/auth/users - List Users",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "users"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Data Ingestion (Cryptography Layer)",
+      "item": [
+        {
+          "name": "POST /api/ingestion/dataset - Ingest & Encrypt Dataset",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Dataset ingested with encryption', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.datasetId).to.be.a('string');",
+                  "    pm.expect(jsonData.encrypted).to.equal(true);",
+                  "    pm.collectionVariables.set('dataset_id', jsonData.datasetId);",
+                  "    console.log('✓ Dataset ID:', jsonData.datasetId);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"dataset\": [\n        {\n            \"id\": 1,\n            \"name\": \"John Doe\",\n            \"email\": \"john.doe@email.com\",\n            \"ssn\": \"123-45-6789\",\n            \"age\": 35,\n            \"zipcode\": \"12345\",\n            \"gender\": \"male\",\n            \"disease\": \"Hypertension\",\n            \"income\": 75000,\n            \"education\": \"Bachelor's\"\n        },\n        {\n            \"id\": 2,\n            \"name\": \"Jane Smith\",\n            \"email\": \"jane.smith@email.com\",\n            \"ssn\": \"987-65-4321\",\n            \"age\": 28,\n            \"zipcode\": \"12346\",\n            \"gender\": \"female\",\n            \"disease\": \"Diabetes\",\n            \"income\": 68000,\n            \"education\": \"Master's\"\n        },\n        {\n            \"id\": 3,\n            \"name\": \"Bob Johnson\",\n            \"email\": \"bob.johnson@email.com\",\n            \"ssn\": \"456-78-9012\",\n            \"age\": 45,\n            \"zipcode\": \"12345\",\n            \"gender\": \"male\",\n            \"disease\": \"Heart Disease\",\n            \"income\": 92000,\n            \"education\": \"PhD\"\n        },\n        {\n            \"id\": 4,\n            \"name\": \"Alice Williams\",\n            \"email\": \"alice.williams@email.com\",\n            \"ssn\": \"789-01-2345\",\n            \"age\": 52,\n            \"zipcode\": \"12347\",\n            \"gender\": \"female\",\n            \"disease\": \"Cancer\",\n            \"income\": 115000,\n            \"education\": \"MBA\"\n        },\n        {\n            \"id\": 5,\n            \"name\": \"Charlie Brown\",\n            \"email\": \"charlie.brown@email.com\",\n            \"ssn\": \"321-09-8765\",\n            \"age\": 31,\n            \"zipcode\": \"12345\",\n            \"gender\": \"male\",\n            \"disease\": \"Asthma\",\n            \"income\": 55000,\n            \"education\": \"Bachelor's\"\n        },\n        {\n            \"id\": 6,\n            \"name\": \"Diana Prince\",\n            \"email\": \"diana.prince@email.com\",\n            \"ssn\": \"654-32-1987\",\n            \"age\": 35,\n            \"zipcode\": \"12348\",\n            \"gender\": \"female\",\n            \"disease\": \"Hypertension\",\n            \"income\": 78000,\n            \"education\": \"Master's\"\n        },\n        {\n            \"id\": 7,\n            \"name\": \"Eve Anderson\",\n            \"email\": \"eve.anderson@email.com\",\n            \"ssn\": \"111-22-3333\",\n            \"age\": 42,\n            \"zipcode\": \"12345\",\n            \"gender\": \"female\",\n            \"disease\": \"Diabetes\",\n            \"income\": 85000,\n            \"education\": \"PhD\"\n        },\n        {\n            \"id\": 8,\n            \"name\": \"Frank Miller\",\n            \"email\": \"frank.miller@email.com\",\n            \"ssn\": \"444-55-6666\",\n            \"age\": 55,\n            \"zipcode\": \"12349\",\n            \"gender\": \"male\",\n            \"disease\": \"Heart Disease\",\n            \"income\": 125000,\n            \"education\": \"MBA\"\n        },\n        {\n            \"id\": 9,\n            \"name\": \"Grace Lee\",\n            \"email\": \"grace.lee@email.com\",\n            \"ssn\": \"777-88-9999\",\n            \"age\": 29,\n            \"zipcode\": \"12345\",\n            \"gender\": \"female\",\n            \"disease\": \"Asthma\",\n            \"income\": 62000,\n            \"education\": \"Bachelor's\"\n        },\n        {\n            \"id\": 10,\n            \"name\": \"Henry Wilson\",\n            \"email\": \"henry.wilson@email.com\",\n            \"ssn\": \"000-11-2222\",\n            \"age\": 38,\n            \"zipcode\": \"12350\",\n            \"gender\": \"male\",\n            \"disease\": \"Hypertension\",\n            \"income\": 88000,\n            \"education\": \"Master's\"\n        }\n    ],\n    \"metadata\": {\n        \"source\": \"Medical Records 2024\",\n        \"description\": \"Patient demographic and health data\"\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/ingestion/dataset",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ingestion", "dataset"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/ingestion/datasets - List Datasets",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/ingestion/datasets",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ingestion", "datasets"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Classification & Risk Assessment",
+      "item": [
+        {
+          "name": "POST /api/classification/:datasetId - Classify Dataset",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Classification successful', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.classification).to.be.an('object');",
+                  "    pm.expect(jsonData.riskAssessment).to.be.an('object');",
+                  "    console.log('Risk Score:', jsonData.riskAssessment?.overallRisk);",
+                  "    console.log('Risk Level:', jsonData.riskAssessment?.riskLevel);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/classification/{{dataset_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "classification", "{{dataset_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/risk/assess/:datasetId - Assess Risk",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Risk assessment successful', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.assessment.overallRisk).to.be.a('number');",
+                  "    pm.expect(jsonData.assessment.riskLevel).to.be.oneOf(['Low', 'Medium', 'High']);",
+                  "    console.log('✓ Risk:', jsonData.assessment.overallRisk, '-', jsonData.assessment.riskLevel);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/risk/assess/{{dataset_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "risk", "assess", "{{dataset_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/risk/k-anonymity/:datasetId - Check k-Anonymity",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('k-anonymity check successful', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.kAnonymity).to.be.an('object');",
+                  "    console.log('k:', jsonData.kAnonymity.k);",
+                  "    console.log('Compliant:', jsonData.kAnonymity.compliant);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"k\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/risk/k-anonymity/{{dataset_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "risk", "k-anonymity", "{{dataset_id}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Purpose-Bound Consent (Enhanced)",
+      "item": [
+        {
+          "name": "POST /api/consent/request - Request Consent",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Consent request created', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.consent.id).to.be.a('string');",
+                  "    pm.collectionVariables.set('consent_id', jsonData.consent.id);",
+                  "    console.log('✓ Consent ID:', jsonData.consent.id);",
+                  "    console.log('Purpose:', jsonData.consent.purpose);",
+                  "    console.log('Allowed Fields:', jsonData.consent.allowedFields.join(', '));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{researcherToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"datasetId\": \"{{dataset_id}}\",\n    \"purpose\": \"research\",\n    \"allowedFields\": [\"age\", \"gender\", \"disease\", \"income\", \"education\"],\n    \"expiryDate\": \"2026-12-31T23:59:59Z\",\n    \"aggregatesOnly\": true,\n    \"dpEpsilon\": 1.0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/consent/request",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "consent", "request"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/consent/:consentId/approve - Approve Consent",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Consent approved', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.consent.status).to.equal('approved');",
+                  "    console.log('✓ Consent approved with risk score:', jsonData.consent.riskScore);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"riskScore\": 35,\n    \"notes\": \"Approved for research use with aggregates only\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/consent/{{consent_id}}/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "consent", "{{consent_id}}", "approve"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/consent/:consentId - Get Consent Details",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/consent/{{consent_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "consent", "{{consent_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/consent - List All Consents",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/consent?status=approved",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "consent"],
+              "query": [{ "key": "status", "value": "approved" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/consent/my - Get My Consents",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{researcherToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/consent/my",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "consent", "my"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Release Pipeline",
+      "item": [
+        {
+          "name": "POST /api/release/:datasetId - Execute Release Pipeline",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Pipeline execution successful', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.equal(true);",
+                  "    pm.expect(jsonData.releaseId).to.be.a('string');",
+                  "    pm.collectionVariables.set('release_id', jsonData.releaseId);",
+                  "    pm.collectionVariables.set('execution_id', jsonData.executionId);",
+                  "    console.log('✓ Release ID:', jsonData.releaseId);",
+                  "    console.log('Stages:', jsonData.stagesCompleted.join(' → '));",
+                  "    console.log('Final Risk:', jsonData.riskAssessment?.overallRisk);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"consentId\": \"{{consent_id}}\",\n    \"k\": 5,\n    \"l\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/release/{{dataset_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "release", "{{dataset_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/release - List Releases",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/release",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "release"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Differential Privacy Queries",
+      "item": [
+        {
+          "name": "POST /api/dp/count/:releaseId - DP Count Query",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('DP count query successful', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.query).to.equal('count');",
+                  "    pm.expect(jsonData.noisyValue).to.be.a('number');",
+                  "    pm.expect(jsonData.privacyGuarantee).to.include('ε=');",
+                  "    console.log('✓ DP Count:', jsonData.noisyValue, '(noise:', jsonData.noise + ')');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{researcherToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"epsilon\": 1.0,\n    \"filters\": {}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/dp/count/{{release_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dp", "count", "{{release_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/dp/sum/:releaseId - DP Sum Query",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('DP sum query successful', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.query).to.equal('sum');",
+                  "    console.log('✓ DP Sum:', jsonData.noisyValue);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{researcherToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"field\": \"income\",\n    \"epsilon\": 1.0,\n    \"filters\": {\n        \"disease\": \"Hypertension\"\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/dp/sum/{{release_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dp", "sum", "{{release_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/dp/mean/:releaseId - DP Mean Query",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{researcherToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"field\": \"income\",\n    \"epsilon\": 1.0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/dp/mean/{{release_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dp", "mean", "{{release_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/dp/histogram/:releaseId - DP Histogram",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{researcherToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"field\": \"disease\",\n    \"epsilon\": 1.0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/dp/histogram/{{release_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dp", "histogram", "{{release_id}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "7. Secure Query (Query Firewall)",
+      "item": [
+        {
+          "name": "POST /api/query/:releaseId - Secure Query",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Secure query successful', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.firewall).to.be.an('object');",
+                  "    pm.expect(jsonData.consent).to.be.an('object');",
+                  "    console.log('✓ Query passed firewall');",
+                  "    console.log('Filter Specificity:', jsonData.firewall?.filterSpecificity);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{researcherToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"type\": \"aggregate\",\n    \"aggregate\": \"count\",\n    \"fields\": [\"disease\"],\n    \"purpose\": \"research\",\n    \"epsilon\": 0.5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/query/{{release_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "query", "{{release_id}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "8. Tamper-Proof Audit Chain",
+      "item": [
+        {
+          "name": "GET /api/audit/chain - Validate Chain Integrity",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Audit chain validated', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.valid).to.be.a('boolean');",
+                  "    pm.expect(jsonData.statistics).to.be.an('object');",
+                  "    console.log('✓ Chain Valid:', jsonData.valid);",
+                  "    console.log('Chain Length:', jsonData.statistics?.chainLength);",
+                  "    console.log('Genesis Hash:', jsonData.statistics?.genesisHash?.substring(0, 20) + '...');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit/chain",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "audit", "chain"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/audit/events - Query Events",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit/events?eventType=&userId=&limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "audit", "events"],
+              "query": [
+                { "key": "eventType", "value": "" },
+                { "key": "userId", "value": "" },
+                { "key": "limit", "value": "50" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/audit/user/:userId - User Activity",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit/user/admin",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "audit", "user", "admin"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/audit/dataset/:datasetId - Dataset Activity",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit/dataset/{{dataset_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "audit", "dataset", "{{dataset_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/audit/consent/:consentId - Consent Lifecycle",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit/consent/{{consent_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "audit", "consent", "{{consent_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/audit/export - Export Audit Log",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/audit/export?format=json",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "audit", "export"],
+              "query": [{ "key": "format", "value": "json" }]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "9. Complete Workflow Test",
+      "item": [
+        {
+          "name": "🚀 Complete Pipeline Test",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// This test validates the complete security pipeline",
+                  "pm.test('Complete pipeline executed', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "console.log('=== COMPLETE WORKFLOW RESULT ===');",
+                  "console.log('Release ID:', jsonData.releaseId);",
+                  "console.log('Pipeline Stages:', jsonData.stagesCompleted?.length);",
+                  "console.log('Risk Score:', jsonData.riskAssessment?.overallRisk);",
+                  "console.log('k-Anonymity:', jsonData.anonymization?.kCompliant ? '✓ PASS' : '✗ FAIL');",
+                  "console.log('l-Diversity:', jsonData.anonymization?.lCompliant ? '✓ PASS' : '✗ FAIL');",
+                  "console.log('================================');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"consentId\": \"{{consent_id}}\",\n    \"k\": 5,\n    \"l\": 2,\n    \"maxRiskLevel\": \"Medium\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/release/{{dataset_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "release", "{{dataset_id}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
