@@ -45,5 +45,10 @@ export const consentService = {
 
   listAllConsents: () => {
     return consentEngine.listAllConsents();
+  },
+
+  getActiveConsents: () => {
+    const allConsents = consentEngine.listAllConsents();
+    return allConsents.filter(c => c.status === CONSENT_STATUS.ACTIVE);
   }
 };

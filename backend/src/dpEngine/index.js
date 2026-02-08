@@ -492,6 +492,20 @@ export const dpEngine = {
     if (epsilon <= 1.0) return DP_CONFIG.PRIVACY_LEVELS.MODERATE;
     if (epsilon <= 2.0) return DP_CONFIG.PRIVACY_LEVELS.LOW;
     return DP_CONFIG.PRIVACY_LEVELS.MINIMAL;
+  },
+  
+  // Get overall budget status
+  getBudgetStatus: () => {
+    const budgets = Array.from(privacyBudgetManager.budgets.values());
+    const total = budgets.reduce((sum, b) => sum + b.totalEpsilon, 0);
+    const consumed = budgets.reduce((sum, b) => sum + b.consumedEpsilon, 0);
+    
+    return {
+      total: total || 10.0,
+      consumed: consumed || 0,
+      remaining: (total || 10.0) - consumed,
+      datasets: budgets.length
+    };
   }
 };
 

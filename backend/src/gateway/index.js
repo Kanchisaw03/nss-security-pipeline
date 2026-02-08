@@ -53,7 +53,7 @@ const createRateLimiter = () => {
 // Request logging middleware
 const requestLogger = (req, res, next) => {
   const startTime = Date.now();
-  
+
   res.on('finish', () => {
     const duration = Date.now() - startTime;
     logger.info({
@@ -66,7 +66,7 @@ const requestLogger = (req, res, next) => {
       timestamp: new Date().toISOString()
     });
   });
-  
+
   next();
 };
 
@@ -82,7 +82,7 @@ const globalErrorHandler = (err, req, res, next) => {
 
   // Don't expose internal error details in production
   const isDevelopment = process.env.NODE_ENV === 'development';
-  
+
   res.status(err.status || 500).json({
     error: 'Internal server error',
     ...(isDevelopment && { message: err.message, stack: err.stack })
@@ -96,7 +96,7 @@ const notFoundHandler = (req, res) => {
     path: req.path,
     method: req.method
   });
-  
+
   res.status(404).json({
     error: 'Resource not found',
     path: req.path
@@ -106,7 +106,7 @@ const notFoundHandler = (req, res) => {
 // Initialize gateway
 export const createGateway = () => {
   const app = express();
-  
+
   // Security middleware
   app.use(helmet({
     contentSecurityPolicy: {
@@ -123,24 +123,47 @@ export const createGateway = () => {
       preload: true
     }
   }));
-  
+
+  // CORS configuration - permissive in development
   app.use(cors({
-    origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
+    origin: function (origin, callback) {
+      // Allow requests with no origin (mobile apps, curl, etc.)
+      if (!origin) return callback(null, true);
+
+      const allowedOrigins = [
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'http://localhost:5174',
+        'http://localhost:5175',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:5174',
+        'http://127.0.0.1:5175'
+      ];
+
+      if (allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 200
   }));
-  
-  // Body parsing
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-  
+
+  // Body parsing - increased limit for large dataset uploads
+  app.use(express.json({ limit: '100mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '100mb' }));
+
   // Rate limiting
   app.use(createRateLimiter());
-  
+
   // Request logging
   app.use(requestLogger);
-  
+
   return {
     app,
     notFoundHandler,

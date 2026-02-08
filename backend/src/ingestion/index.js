@@ -12,7 +12,7 @@ import { Readable } from 'stream';
 // Schema validation rules
 const SCHEMA_RULES = {
   requiredFields: ['id'],
-  maxFieldLength: 100,
+  maxFieldLength: 500,
   maxRecordSize: 10000, // 10KB per record
   maxDatasetSize: 100 * 1024 * 1024 // 100MB per dataset
 };
@@ -145,9 +145,15 @@ export const ingestionService = {
         throw new Error('CSV file is empty');
       }
       
-      // Convert string values to appropriate types
-      const processedData = data.map(record => {
+      // Convert string values to appropriate types and auto-generate IDs
+      const processedData = data.map((record, index) => {
         const processed = {};
+        
+        // Auto-generate ID if not present
+        if (!record.id) {
+          processed.id = `record_${index + 1}`;
+        }
+        
         Object.entries(record).forEach(([key, value]) => {
           // Try to convert to number
           const numValue = parseFloat(value);

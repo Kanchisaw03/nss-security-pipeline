@@ -1,9 +1,9 @@
 {
   "info": {
     "name": "Safe Data Access Platform - Security Enhanced API",
-    "description": "Complete API collection for the 9-layer defense-in-depth privacy platform. Includes all new security modules: cryptography, anonymization, differential privacy, risk scoring, zero trust, consent engine, query firewall, audit chain, and release pipeline.",
+    "description": "Complete API collection for the 9-layer defense-in-depth privacy platform with Stage 2 Governance Upgrade. Includes all security modules: cryptography, anonymization, differential privacy, risk scoring, zero trust, consent engine, query firewall, audit chain, release pipeline, NSO benchmarking, privacy-utility reporting, attack simulation, DPDP compliance mapping, and privacy-utility curves.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "version": "2.0.0"
+    "version": "2.1.0"
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:3000" },
@@ -13,7 +13,11 @@
     { "key": "dataset_id", "value": "" },
     { "key": "consent_id", "value": "" },
     { "key": "release_id", "value": "" },
-    { "key": "execution_id", "value": "" }
+    { "key": "execution_id", "value": "" },
+    { "key": "benchmark_id", "value": "" },
+    { "key": "governance_id", "value": "" },
+    { "key": "attack_id", "value": "" },
+    { "key": "curve_id", "value": "" }
   ],
   "item": [
     {
@@ -98,7 +102,8 @@
                   "pm.test('Security status works with authentication', function() {",
                   "    pm.response.to.have.status(200);",
                   "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData.layers).to.be.an('object');",
+                  "    pm.expect(jsonData.components).to.be.an('object');",
+                  "    console.log('\\u2713 Components:', Object.keys(jsonData.components || {}).join(', '));",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -909,6 +914,350 @@
               "raw": "{{baseUrl}}/api/release/{{dataset_id}}",
               "host": ["{{baseUrl}}"],
               "path": ["api", "release", "{{dataset_id}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "10. Stage 2 Governance & Reporting",
+      "item": [
+        {
+          "name": "POST /api/benchmark/:datasetId - Run Benchmark",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Benchmark completed', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.benchmarkId).to.be.a('string');",
+                  "    pm.expect(jsonData.modes).to.be.an('object');",
+                  "    console.log('\u2713 Benchmark Winner:', jsonData.winner);",
+                  "    console.log('\u2713 Baseline Risk:', jsonData.modes?.baseline?.riskLevel);",
+                  "    console.log('\u2713 Enhanced Risk:', jsonData.modes?.enhanced?.riskLevel);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"k\": 5,\n    \"l\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/benchmark/{{dataset_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "benchmark", "{{dataset_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/report/benchmark/:datasetId - Get Benchmark Report",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/report/benchmark/{{dataset_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "report", "benchmark", "{{dataset_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/release/:datasetId - Release with Governance (Enhanced Mode)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Release with governance completed', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.mode).to.equal('enhanced');",
+                  "    pm.expect(jsonData.governance).to.be.an('object');",
+                  "    pm.collectionVariables.set('release_id', jsonData.releaseId);",
+                  "    console.log('\u2713 Release with Governance Mode:', jsonData.mode);",
+                  "    console.log('\u2713 Governance ID:', jsonData.governance?.governanceId);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"consentId\": \"{{consent_id}}\",\n    \"k\": 5,\n    \"l\": 2,\n    \"mode\": \"enhanced\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/release/{{dataset_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "release", "{{dataset_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/report/privacy-utility/:releaseId - Privacy-Utility Report",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Privacy-utility report retrieved', function() {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (jsonData.report && jsonData.report !== 'Report not available') {",
+                  "        pm.expect(jsonData.report).to.be.an('object');",
+                  "        console.log('\u2713 Report Type:', jsonData.report?.reportType);",
+                  "        console.log('\u2713 Privacy Score:', jsonData.report?.report?.summary?.privacyScore);",
+                  "        console.log('\u2713 Utility Score:', jsonData.report?.report?.summary?.utilityScore);",
+                  "    } else {",
+                  "        console.log('\u26a0 Governance pipeline may still be running');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/report/privacy-utility/{{release_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "report", "privacy-utility", "{{release_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/compliance/dpdp - DPDP Compliance Map",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('DPDP compliance map retrieved', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.compliance).to.be.an('object');",
+                  "    const principles = Object.keys(jsonData.compliance);",
+                  "    console.log('\u2713 DPDP Principles Mapped:', principles.length);",
+                  "    console.log('\u2713 Principles:', principles.join(', '));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/compliance/dpdp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "compliance", "dpdp"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/compliance/dpdp/:principle - Specific Principle",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/compliance/dpdp/purpose_limitation",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "compliance", "dpdp", "purpose_limitation"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/compliance/summary - Compliance Certificate",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Compliance summary generated', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.summary).to.be.an('object');",
+                  "    console.log('\u2713 Compliance Score:', jsonData.summary?.complianceScore, '%');",
+                  "    console.log('\u2713 Compliance Level:', jsonData.summary?.complianceLevel);",
+                  "    console.log('\u2713 Valid Until:', jsonData.summary?.validUntil);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/compliance/summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "compliance", "summary"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/attack-simulation/:releaseId - Run Attack Simulation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Attack simulation completed', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.attackId).to.be.a('string');",
+                  "    pm.expect(jsonData.attacks).to.be.an('object');",
+                  "    pm.collectionVariables.set('attack_id', jsonData.attackId);",
+                  "    console.log('\\u2713 Attack ID:', jsonData.attackId);",
+                  "    console.log('\\u2713 Attacks Tested:', Object.keys(jsonData.attacks || {}).length);",
+                  "    console.log('\\u2713 Overall Risk:', jsonData.summary?.riskLevel || jsonData.summary?.compositeRiskScore);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/attack-simulation/{{release_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attack-simulation", "{{release_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/attack-simulation/result/:attackId - Get Attack Results",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/attack-simulation/result/{{attack_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attack-simulation", "result", "{{attack_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/curve/:datasetId - Generate Privacy-Utility Curve",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Privacy-utility curve generated', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.curveId).to.be.a('string');",
+                  "    pm.expect(jsonData.curve).to.be.an('array');",
+                  "    pm.expect(jsonData.optimal).to.be.an('object');",
+                  "    pm.collectionVariables.set('curve_id', jsonData.curveId);",
+                  "    console.log('\u2713 Curve ID:', jsonData.curveId);",
+                  "    console.log('\u2713 Points Generated:', jsonData.curve?.length);",
+                  "    console.log('\u2713 Optimal Epsilon:', jsonData.optimal?.epsilon);",
+                  "    console.log('\u2713 Recommendation:', jsonData.recommendation);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"epsilons\": [0.1, 0.5, 1.0, 2.0, 5.0]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/curve/{{dataset_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "curve", "{{dataset_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/curve/visualization/:curveId - Get Curve Visualization",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/curve/visualization/{{curve_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "curve", "visualization", "{{curve_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/governance/dashboard/:releaseId - Governance Dashboard",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Governance dashboard retrieved', function() {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (jsonData.dashboard) {",
+                  "        pm.expect(jsonData.dashboard).to.be.an('object');",
+                  "        console.log('\u2713 Benchmark:', jsonData.dashboard?.benchmark?.status);",
+                  "        console.log('\u2713 Report:', jsonData.dashboard?.report?.status);",
+                  "        console.log('\u2713 Attack Sim:', jsonData.dashboard?.attackSimulation?.status);",
+                  "        console.log('\u2713 Compliance:', jsonData.dashboard?.compliance?.status);",
+                  "    } else {",
+                  "        console.log('\u26a0 No governance data yet');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/governance/dashboard/{{release_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "governance", "dashboard", "{{release_id}}"]
             }
           },
           "response": []

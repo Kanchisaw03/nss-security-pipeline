@@ -27,19 +27,19 @@ import { storageService } from '../storage/index.js';
 const PIPELINE_CONFIG = {
   // Default k-anonymity threshold
   K_ANON: 5,
-  
+
   // Default l-diversity threshold
   L_DIV: 2,
-  
+
   // Default t-closeness threshold
   T_CLOSE: 0.2,
-  
+
   // Maximum risk level allowed for release
   MAX_RISK_LEVEL: 'Medium',
-  
+
   // Risk threshold (0-100)
   MAX_RISK_SCORE: 60,
-  
+
   // Enable/disable pipeline stages
   STAGES: {
     DECRYPT: true,
@@ -68,16 +68,29 @@ const executePipeline = async (datasetId, rawData, consentId, options = {}) => {
   const executionId = uuidv4();
   const stagesCompleted = [];
   const errors = [];
-  
+
   try {
-    // Verify consent
-    const consentCheck = consentEngine.isConsentValid(consentId);
-    if (!consentCheck.valid) {
-      throw new Error(`Consent validation failed: ${consentCheck.reason}`);
+    // Check if we should skip consent validation (demo mode)
+    let consent;
+    if (options.skipConsentValidation) {
+      // Create a mock consent for demo mode
+      consent = {
+        id: consentId,
+        researcherId: 'demo-user',
+        purpose: 'Demo Release Pipeline',
+        status: 'approved',
+        isDemo: true
+      };
+      console.log(`[DEMO MODE] Skipping consent validation for: ${consentId}`);
+    } else {
+      // Verify consent
+      const consentCheck = consentEngine.isConsentValid(consentId);
+      if (!consentCheck.valid) {
+        throw new Error(`Consent validation failed: ${consentCheck.reason}`);
+      }
+      consent = consentCheck.consent;
     }
-    
-    const consent = consentCheck.consent;
-    
+
     // Initialize execution record
     const execution = {
       id: executionId,
@@ -88,9 +101,9 @@ const executePipeline = async (datasetId, rawData, consentId, options = {}) => {
       stages: [],
       status: 'running'
     };
-    
+
     pipelineExecutions.set(executionId, execution);
-    
+
     // Stage 1: Retrieve and decrypt raw data
     let currentData;
     if (PIPELINE_CONFIG.STAGES.DECRYPT) {
@@ -107,7 +120,7 @@ const executePipeline = async (datasetId, rawData, consentId, options = {}) => {
         throw new Error(`Decrypt stage failed: ${error.message}`);
       }
     }
-    
+
     // Stage 2: Classify fields
     let classification;
     if (PIPELINE_CONFIG.STAGES.CLASSIFY) {
@@ -126,7 +139,7 @@ const executePipeline = async (datasetId, rawData, consentId, options = {}) => {
         throw new Error(`Classification stage failed: ${error.message}`);
       }
     }
-    
+
     // Stage 3: Risk Assessment
     let riskAssessment;
     if (PIPELINE_CONFIG.STAGES.RISK_ASSESS) {
@@ -140,14 +153,14 @@ const executePipeline = async (datasetId, rawData, consentId, options = {}) => {
           riskLevel: riskAssessment.riskLevel
         });
         stagesCompleted.push('risk_assess');
-        
+
         // Check risk threshold
         if (riskAssessment.overallRisk > PIPELINE_CONFIG.MAX_RISK_SCORE) {
           const releaseCheck = riskEngine.checkReleaseEligibility(
-            riskAssessment, 
+            riskAssessment,
             options.maxRiskLevel || PIPELINE_CONFIG.MAX_RISK_LEVEL
           );
-          
+
           if (!releaseCheck.eligible) {
             throw new Error(
               `Risk threshold exceeded: ${riskAssessment.overallRisk.toFixed(2)} ` +
@@ -159,21 +172,21 @@ const executePipeline = async (datasetId, rawData, consentId, options = {}) => {
         throw new Error(`Risk assessment failed: ${error.message}`);
       }
     }
-    
+
     // Stage 4: Multi-layer anonymization
     let anonymizedResult;
     if (PIPELINE_CONFIG.STAGES.ANONYMIZE) {
       try {
         const k = options.k || PIPELINE_CONFIG.K_ANON;
         const l = options.l || PIPELINE_CONFIG.L_DIV;
-        
+
         anonymizedResult = anonymizationEngine.anonymize(
           currentData,
           classification,
           k,
           l
         );
-        
+
         execution.stages.push({
           name: 'anonymize',
           status: 'completed',
@@ -183,22 +196,22 @@ const executePipeline = async (datasetId, rawData, consentId, options = {}) => {
           generalizationLevel: anonymizedResult.generalizationLevel
         });
         stagesCompleted.push('anonymize');
-        
+
         currentData = anonymizedResult.data;
       } catch (error) {
         throw new Error(`Anonymization failed: ${error.message}`);
       }
     }
-    
+
     // Stage 5: Validate privacy models
     if (PIPELINE_CONFIG.STAGES.VALIDATE) {
       try {
         const k = options.k || PIPELINE_CONFIG.K_ANON;
         const quasiFields = classification.summary.quasiIdentifiers;
-        
+
         // Validate k-anonymity
         const kAnonCheck = anonymizationEngine.checkKAnonymity(currentData, quasiFields, k);
-        
+
         // Validate l-diversity if sensitive fields exist
         const sensitiveFields = classification.summary.sensitiveAttributes;
         let lDivCheck = null;
@@ -210,10 +223,10 @@ const executePipeline = async (datasetId, rawData, consentId, options = {}) => {
             options.l || PIPELINE_CONFIG.L_DIV
           );
         }
-        
+
         // Final risk assessment on anonymized data
         const finalRisk = riskEngine.calculateRiskScore(currentData, classification);
-        
+
         execution.stages.push({
           name: 'validate',
           status: 'completed',
@@ -224,26 +237,26 @@ const executePipeline = async (datasetId, rawData, consentId, options = {}) => {
           finalRiskLevel: finalRisk.riskLevel
         });
         stagesCompleted.push('validate');
-        
+
         // Must pass validation
         if (!kAnonCheck.compliant) {
           throw new Error(
             `Validation failed: k-anonymity not achieved (k=${k}, violations=${kAnonCheck.violatingGroups})`
           );
         }
-        
+
         if (lDivCheck && !lDivCheck.compliant) {
           throw new Error(
             `Validation failed: l-diversity not achieved (l=${options.l || PIPELINE_CONFIG.L_DIV})`
           );
         }
-        
+
         riskAssessment = finalRisk;
       } catch (error) {
         throw new Error(`Validation failed: ${error.message}`);
       }
     }
-    
+
     // Stage 6: Encrypt release package
     let encryptedPackage;
     if (PIPELINE_CONFIG.STAGES.ENCRYPT) {
@@ -274,10 +287,10 @@ const executePipeline = async (datasetId, rawData, consentId, options = {}) => {
             pipelineExecutionId: executionId
           }
         };
-        
+
         // Encrypt with key hierarchy
         encryptedPackage = cryptoService.encrypt(releaseData);
-        
+
         execution.stages.push({
           name: 'encrypt',
           status: 'completed',
@@ -288,13 +301,13 @@ const executePipeline = async (datasetId, rawData, consentId, options = {}) => {
         throw new Error(`Encryption failed: ${error.message}`);
       }
     }
-    
+
     // Stage 7: Store release package
     let releaseId;
     if (PIPELINE_CONFIG.STAGES.STORE) {
       try {
         releaseId = uuidv4();
-        
+
         // Store in released store
         storageService.storeReleased(releaseId, {
           encryptedPackage,
@@ -307,10 +320,14 @@ const executePipeline = async (datasetId, rawData, consentId, options = {}) => {
           riskScore: riskAssessment.overallRisk,
           pipelineExecutionId: executionId
         });
-        
-        // Bind release to consent
-        consentEngine.bindReleaseToConsent(releaseId, consentId);
-        
+
+        // Bind release to consent (skip in demo mode)
+        if (!options.skipConsentValidation) {
+          consentEngine.bindReleaseToConsent(releaseId, consentId);
+        } else {
+          console.log(`[DEMO MODE] Skipping consent binding for release: ${releaseId}`);
+        }
+
         execution.stages.push({
           name: 'store',
           status: 'completed',
@@ -322,14 +339,14 @@ const executePipeline = async (datasetId, rawData, consentId, options = {}) => {
         throw new Error(`Storage failed: ${error.message}`);
       }
     }
-    
+
     // Complete execution
     const executionTime = Date.now() - startTime;
     execution.status = 'completed';
     execution.completedAt = new Date().toISOString();
     execution.executionTime = executionTime;
     execution.releaseId = releaseId;
-    
+
     // Log to audit chain
     await auditChainService.logDataset(AUDIT_EVENTS.DATASET_RELEASED, 'system', datasetId, {
       releaseId,
@@ -339,7 +356,7 @@ const executePipeline = async (datasetId, rawData, consentId, options = {}) => {
       stagesCompleted,
       executionTime
     });
-    
+
     return {
       success: true,
       executionId,
@@ -362,10 +379,10 @@ const executePipeline = async (datasetId, rawData, consentId, options = {}) => {
       },
       recordCount: currentData.length
     };
-    
+
   } catch (error) {
     const executionTime = Date.now() - startTime;
-    
+
     // Update execution record
     const execution = pipelineExecutions.get(executionId);
     if (execution) {
@@ -374,7 +391,7 @@ const executePipeline = async (datasetId, rawData, consentId, options = {}) => {
       execution.completedAt = new Date().toISOString();
       execution.executionTime = executionTime;
     }
-    
+
     // Log failure
     await auditChainService.logEvent(AUDIT_EVENTS.ERROR_OCCURRED, 'system', {
       error: `Pipeline execution failed: ${error.message}`,
@@ -383,7 +400,7 @@ const executePipeline = async (datasetId, rawData, consentId, options = {}) => {
       consentId,
       stagesCompleted
     });
-    
+
     return {
       success: false,
       executionId,
@@ -408,20 +425,20 @@ const getExecution = (executionId) => {
  */
 const listExecutions = (filters = {}) => {
   let executions = Array.from(pipelineExecutions.values());
-  
+
   if (filters.status) {
     executions = executions.filter(e => e.status === filters.status);
   }
-  
+
   if (filters.datasetId) {
     executions = executions.filter(e => e.datasetId === filters.datasetId);
   }
-  
+
   if (filters.consentId) {
     executions = executions.filter(e => e.consentId === filters.consentId);
   }
-  
-  return executions.sort((a, b) => 
+
+  return executions.sort((a, b) =>
     new Date(b.startedAt) - new Date(a.startedAt)
   );
 };
@@ -431,7 +448,7 @@ const listExecutions = (filters = {}) => {
  */
 const getStatistics = () => {
   const executions = Array.from(pipelineExecutions.values());
-  
+
   return {
     totalExecutions: executions.length,
     successful: executions.filter(e => e.status === 'completed').length,
@@ -452,7 +469,7 @@ export const releasePipeline = {
   getExecution,
   listExecutions,
   getStatistics,
-  
+
   // Configuration
   config: PIPELINE_CONFIG
 };

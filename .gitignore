@@ -42,3 +42,12 @@ coverage/
 # Temporary files
 *.tmp
 *.temp
+
+# Backend specific
+backend/logs/
+backend/*.log
+backend/session_summary.txt
+backend/session-ses_*.md
+
+# Frontend specific
+frontend/dist/

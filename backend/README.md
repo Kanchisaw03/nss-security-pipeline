@@ -24,6 +24,7 @@ A comprehensive **privacy-by-design** data access platform implementing **9 secu
 - 🚫 **Zero Trust**: JWT authentication with role-based access control
 - 📈 **Risk Scoring**: 5-factor algorithm (0-100 scale)
 - 🔄 **7-Stage Pipeline**: Automated data release with privacy validation
+- 🏛️ **Stage 2 Governance**: NSO Benchmarking, Privacy-Utility Reports, Attack Simulation, DPDP Compliance, Privacy-Utility Curves
 
 ---
 
@@ -174,6 +175,21 @@ Authorization: Bearer <token>
 | `GET` | `/api/audit/consent/:consentId` | Get consent lifecycle |
 | `GET` | `/api/audit/export` | Export audit log |
 
+#### 8. Stage 2 Governance & Reporting (Admin/Reviewer)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/benchmark/:datasetId` | Run NSO benchmark comparison |
+| `GET` | `/api/report/benchmark/:datasetId` | Get benchmark history |
+| `GET` | `/api/report/privacy-utility/:releaseId` | Privacy-utility report |
+| `GET` | `/api/compliance/dpdp` | Full DPDP compliance map |
+| `GET` | `/api/compliance/dpdp/:principle` | Specific principle compliance |
+| `GET` | `/api/compliance/summary` | Compliance certificate |
+| `POST` | `/api/attack-simulation/:releaseId` | Run attack simulation |
+| `GET` | `/api/attack-simulation/result/:attackId` | Get attack results |
+| `POST` | `/api/curve/:datasetId` | Generate privacy-utility curve |
+| `GET` | `/api/curve/visualization/:curveId` | Curve visualization data |
+| `GET` | `/api/governance/dashboard/:releaseId` | Governance dashboard |
+
 ---
 
 ## 🏗️ Architecture
@@ -227,6 +243,11 @@ backend/src/
 ├── queryFirewall/             # Attack defense
 ├── auditChain/                # Tamper-proof audit
 ├── releasePipeline/           # Release orchestration
+├── benchmarkMode/             # NSO Benchmark (Stage 2)
+├── reporting/                 # Privacy-Utility Reports (Stage 2)
+├── attackSimulation/          # Attack Simulator (Stage 2)
+├── compliance/                # DPDP Compliance (Stage 2)
+├── governance/                # Governance Integration (Stage 2)
 ├── security/                  # Integration layer
 ├── routes/                    # API routes
 ├── examples/                  # Usage examples
@@ -371,6 +392,84 @@ node src/examples/security-examples.js
 9. Audit chain demonstration
 10. Tokenization
 
+### Run Backend Integration Tests
+```bash
+node test-backend.js
+```
+
+**Coverage:** 32 integration tests across all 9 phases including Stage 2 Governance
+
+---
+
+## 🏛️ Stage 2 Governance & Reporting
+
+The Stage 2 Governance Upgrade adds 5 new modules for enhanced privacy governance, regulatory compliance, and benchmarking.
+
+### NSO Benchmark Mode
+
+Compare baseline vs enhanced anonymization modes:
+- **Baseline**: Direct identifier removal + basic generalization
+- **Enhanced**: k-Anonymity (k≥5), l-Diversity (l≥2), t-Closeness
+- **Automatic Winner Selection** based on risk/utility tradeoff
+
+```bash
+POST /api/benchmark/:datasetId
+```
+
+### Privacy-Utility Report Engine
+
+Generate comprehensive reports with:
+- **Privacy Metrics**: k-anonymity, l-diversity, uniqueness, entropy
+- **Utility Metrics**: Mean/variance difference, KL divergence, suppression rate
+- **Risk Scores**: Before and after anonymization
+
+```bash
+GET /api/report/privacy-utility/:releaseId
+```
+
+### Attack Simulation Engine
+
+Test dataset resilience against 3 attack types:
+- **Linkage Attack**: Record re-identification via quasi-identifiers
+- **Homogeneity Attack**: Sensitive value inference
+- **Background Knowledge Attack**: External data exploitation
+
+```bash
+POST /api/attack-simulation/:releaseId
+```
+
+### DPDP Act Compliance Map
+
+Map privacy controls to India's Digital Personal Data Protection Act 2023:
+- 7 core principles mapped
+- Control-verification matrix
+- Automatic compliance scoring
+- Compliance certificate generation
+
+```bash
+GET /api/compliance/dpdp
+GET /api/compliance/summary
+```
+
+### Privacy-Utility Curve
+
+Simulate privacy-utility tradeoffs across epsilon values:
+- Multi-point simulation (ε = 0.1, 0.5, 1.0, 2.0, 5.0)
+- Optimal epsilon recommendation
+- Visualization data for charts
+
+```bash
+POST /api/curve/:datasetId
+GET /api/curve/visualization/:curveId
+```
+
+### Governance Dashboard
+
+Unified view of all governance activities:
+```bash
+GET /api/governance/dashboard/:releaseId
+```
+
 ---
 
 ## 📖 Usage Examples
@@ -456,6 +555,10 @@ const result = await securityLayer.dp.count(1000, 0.5);
 6. ✅ **Purpose binding** - Query purpose must match consent
 7. ✅ **Tamper-proof audit** - Cryptographic chain integrity
 8. ✅ **Attack detection** - Automatic blocking of suspicious patterns
+9. ✅ **NSO Benchmarking** - Baseline vs enhanced mode comparison
+10. ✅ **DPDP Compliance** - India's data protection act mapping
+11. ✅ **Attack Simulation** - Test resilience against linkage attacks
+12. ✅ **Privacy-Utility Optimization** - Epsilon curve generation
 
 ---
 
@@ -463,7 +566,9 @@ const result = await securityLayer.dp.count(1000, 0.5);
 
 - [Security Architecture](SECURITY_ARCHITECTURE.md) - Detailed security design
 - [API Documentation](SafeDataAccessPostman_Testing_Documentation.md) - Postman collection
+- [Postman Collection](SafeDataAccessPlatform.postman_collection.json) - Importable collection v2.1.0
 - [Unit Tests](src/tests/security-tests.js) - 54 comprehensive tests
+- [Integration Tests](test-backend.js) - 32 end-to-end tests
 - [Usage Examples](src/examples/security-examples.js) - 10 working examples
 
 ---
@@ -490,6 +595,7 @@ This project is licensed under the MIT License.
 - **l-Diversity**: Machanavajjhala et al. (2007)
 - **t-Closeness**: Li et al. (2007)
 - **Differential Privacy**: Dwork & McSherry (2006)
+- **DPDP Act 2023**: Government of India
 
 ---
 
@@ -508,8 +614,11 @@ For support, email: support@safedataaccess.com
 - [Health Check](http://localhost:3000/health)
 - [API Status](http://localhost:3000/api/status)
 - [Security Status](http://localhost:3000/api/security/status) (requires auth)
+- [DPDP Compliance](http://localhost:3000/api/compliance/dpdp) (requires auth)
 
-**Total Lines of Code:** ~15,000
+**Total Lines of Code:** ~18,000
 **Security Layers:** 9
+**Governance Modules:** 5
 **Unit Tests:** 54
-**API Endpoints:** 40+
+**Integration Tests:** 32
+**API Endpoints:** 52+

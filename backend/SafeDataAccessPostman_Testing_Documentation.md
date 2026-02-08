@@ -77,6 +77,9 @@ The collection uses these variables:
 | `dataset_id` | Active dataset ID | (empty) |
 | `consent_id` | Active consent ID | (empty) |
 | `release_id` | Active release ID | (empty) |
+| `benchmark_id` | Benchmark run ID | (empty) |
+| `attack_id` | Attack simulation ID | (empty) |
+| `curve_id` | Privacy-utility curve ID | (empty) |
 
 ---
 

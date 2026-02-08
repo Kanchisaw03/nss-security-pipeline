@@ -22,7 +22,10 @@ const state = {
   researcherToken: null,
   datasetId: null,
   consentId: null,
-  releaseId: null
+  releaseId: null,
+  benchmarkId: null,
+  attackId: null,
+  curveId: null
 };
 
 // Helper function to make requests
@@ -424,12 +427,220 @@ async function testQueryFirewall() {
 }
 
 // ==========================================
+// STAGE 2 GOVERNANCE TESTS
+// ==========================================
+
+async function testRunBenchmark() {
+  if (!state.datasetId) {
+    console.log('  ⚠️  Skipping - no dataset ID');
+    return true;
+  }
+  
+  const res = await makeRequest('POST', `/api/benchmark/${state.datasetId}`, {
+    k: 5,
+    l: 2
+  }, state.adminToken);
+  
+  if (res.ok && res.data?.benchmarkId) {
+    state.benchmarkId = res.data.benchmarkId;
+    console.log(`  📊 Benchmark ID: ${state.benchmarkId}`);
+    console.log(`  📊 Winner: ${res.data.winner}`);
+    console.log(`  📊 Baseline Risk: ${res.data.modes?.baseline?.riskLevel}`);
+    console.log(`  📊 Enhanced Risk: ${res.data.modes?.enhanced?.riskLevel}`);
+    return true;
+  }
+  return false;
+}
+
+async function testGetBenchmarkReport() {
+  if (!state.datasetId) {
+    console.log('  ⚠️  Skipping - no dataset ID');
+    return true;
+  }
+  
+  const res = await makeRequest('GET', `/api/report/benchmark/${state.datasetId}`, null, state.adminToken);
+  
+  if (res.ok && res.data?.benchmarks) {
+    console.log(`  📋 Benchmarks Found: ${res.data.benchmarkCount}`);
+    return true;
+  }
+  return false;
+}
+
+async function testReleaseWithGovernance() {
+  if (!state.datasetId || !state.consentId) {
+    console.log('  ⚠️  Skipping - missing dataset or consent ID');
+    return true;
+  }
+  
+  const res = await makeRequest('POST', `/api/release/${state.datasetId}`, {
+    consentId: state.consentId,
+    k: 5,
+    l: 2,
+    mode: 'enhanced'
+  }, state.adminToken);
+  
+  if (res.ok && res.data?.releaseId) {
+    state.releaseId = res.data.releaseId;
+    console.log(`  🚀 Release ID: ${state.releaseId}`);
+    console.log(`  🚀 Mode: ${res.data.mode}`);
+    console.log(`  🚀 Governance ID: ${res.data.governance?.governanceId || 'N/A'}`);
+    return true;
+  }
+  return false;
+}
+
+async function testPrivacyUtilityReport() {
+  if (!state.releaseId) {
+    console.log('  ⚠️  Skipping - no release ID');
+    return true;
+  }
+  
+  const res = await makeRequest('GET', `/api/report/privacy-utility/${state.releaseId}`, null, state.adminToken);
+  
+  if (res.ok) {
+    if (res.data?.report && res.data.report !== 'Report not available') {
+      console.log(`  📊 Report Type: ${res.data.report?.reportType}`);
+      console.log(`  📊 Privacy Score: ${res.data.report?.report?.summary?.privacyScore}`);
+      console.log(`  📊 Utility Score: ${res.data.report?.report?.summary?.utilityScore}`);
+    } else {
+      console.log(`  ⏳ Report: ${res.data.report}`);
+    }
+    return true;
+  }
+  return false;
+}
+
+async function testDPDPComplianceMap() {
+  const res = await makeRequest('GET', '/api/compliance/dpdp', null, state.adminToken);
+  
+  if (res.ok && res.data?.compliance) {
+    const principles = Object.keys(res.data.compliance);
+    console.log(`  📋 DPDP Principles: ${principles.length}`);
+    console.log(`  📋 Principles: ${principles.join(', ')}`);
+    return true;
+  }
+  return false;
+}
+
+async function testDPDPComplianceSummary() {
+  const res = await makeRequest('GET', '/api/compliance/summary', null, state.adminToken);
+  
+  if (res.ok && res.data?.summary) {
+    console.log(`  📜 Compliance Score: ${res.data.summary.complianceScore}%`);
+    console.log(`  📜 Compliance Level: ${res.data.summary.complianceLevel}`);
+    console.log(`  📜 Valid Until: ${res.data.summary.validUntil}`);
+    return true;
+  }
+  return false;
+}
+
+async function testAttackSimulation() {
+  if (!state.releaseId) {
+    console.log('  ⚠️  Skipping - no release ID');
+    return true;
+  }
+  
+  const res = await makeRequest('POST', `/api/attack-simulation/${state.releaseId}`, {}, state.adminToken);
+  
+  // Debug logging
+  console.log(`  🐛 Response OK: ${res.ok}, Status: ${res.status}`);
+  console.log(`  🐛 Has data: ${!!res.data}, Keys: ${res.data ? Object.keys(res.data).join(', ') : 'none'}`);
+  
+  if (res.ok && res.data?.attackId) {
+    state.attackId = res.data.attackId;
+    console.log(`  🎯 Attack ID: ${state.attackId}`);
+    console.log(`  🎯 Attacks Tested: ${Object.keys(res.data.attacks || {}).length}`);
+    console.log(`  🎯 Overall Risk: ${res.data.summary?.riskLevel || res.data.summary?.compositeRiskScore}`);
+    return true;
+  }
+  
+  console.log(`  ❌ Failed to get attackId from response`);
+  return false;
+}
+
+async function testAttackSimulationResult() {
+  if (!state.attackId) {
+    console.log('  ⚠️  Skipping - no attack ID');
+    return true;
+  }
+  
+  const res = await makeRequest('GET', `/api/attack-simulation/result/${state.attackId}`, null, state.adminToken);
+  
+  if (res.ok && res.data?.result) {
+    console.log(`  🎯 Attacks: ${Object.keys(res.data.result?.attacks || {}).length}`);
+    return true;
+  }
+  return false;
+}
+
+async function testPrivacyUtilityCurve() {
+  if (!state.datasetId) {
+    console.log('  ⚠️  Skipping - no dataset ID');
+    return true;
+  }
+  
+  const res = await makeRequest('POST', `/api/curve/${state.datasetId}`, {
+    epsilons: [0.1, 0.5, 1.0, 2.0, 5.0]
+  }, state.adminToken);
+  
+  if (res.ok && res.data?.curveId) {
+    state.curveId = res.data.curveId;
+    console.log(`  📈 Curve ID: ${state.curveId}`);
+    console.log(`  📈 Points: ${res.data.curve?.length}`);
+    console.log(`  📈 Optimal Epsilon: ${res.data.optimal?.epsilon}`);
+    console.log(`  📈 Recommendation: ${res.data.recommendation}`);
+    return true;
+  }
+  return false;
+}
+
+async function testCurveVisualization() {
+  if (!state.curveId) {
+    console.log('  ⚠️  Skipping - no curve ID');
+    return true;
+  }
+  
+  const res = await makeRequest('GET', `/api/curve/visualization/${state.curveId}`, null, state.adminToken);
+  
+  if (res.ok && res.data?.visualization) {
+    console.log(`  📈 Chart Type: ${res.data.visualization?.chartType}`);
+    console.log(`  📈 Data Points: ${res.data.visualization?.data?.length}`);
+    return true;
+  }
+  return false;
+}
+
+async function testGovernanceDashboard() {
+  if (!state.releaseId) {
+    console.log('  ⚠️  Skipping - no release ID');
+    return true;
+  }
+  
+  const res = await makeRequest('GET', `/api/governance/dashboard/${state.releaseId}`, null, state.adminToken);
+  
+  if (res.ok) {
+    if (res.data?.dashboard) {
+      console.log(`  🏛️  Benchmark: ${res.data.dashboard?.benchmark?.status}`);
+      console.log(`  🏛️  Report: ${res.data.dashboard?.report?.status}`);
+      console.log(`  🏛️  Attack Sim: ${res.data.dashboard?.attackSimulation?.status}`);
+      console.log(`  🏛️  Compliance: ${res.data.dashboard?.compliance?.status}`);
+    } else {
+      console.log(`  ⏳ No governance data yet`);
+    }
+    return true;
+  }
+  return false;
+}
+
+// ==========================================
 // MAIN TEST RUNNER
 // ==========================================
 
 async function runAllTests() {
   console.log('╔════════════════════════════════════════════════════════════╗');
   console.log('║     SAFE DATA ACCESS PLATFORM - BACKEND TEST SUITE         ║');
+  console.log('║     Stage 2 Governance Upgrade Included                    ║');
   console.log('╚════════════════════════════════════════════════════════════╝\n');
   
   console.log('🚀 Starting comprehensive backend tests...\n');
@@ -481,6 +692,20 @@ async function runAllTests() {
   await runTest('Audit Events Query', testAuditEvents);
   await runTest('User Activity', testAuditUserActivity);
   await runTest('Audit Export', testAuditExport);
+  
+  // Phase 9: Stage 2 Governance
+  console.log('\n📍 PHASE 9: Stage 2 Governance & Reporting');
+  await runTest('Run Benchmark', testRunBenchmark);
+  await runTest('Get Benchmark Report', testGetBenchmarkReport);
+  await runTest('Release with Governance Mode', testReleaseWithGovernance);
+  await runTest('Privacy-Utility Report', testPrivacyUtilityReport);
+  await runTest('DPDP Compliance Map', testDPDPComplianceMap);
+  await runTest('DPDP Compliance Summary', testDPDPComplianceSummary);
+  await runTest('Attack Simulation', testAttackSimulation);
+  await runTest('Attack Simulation Results', testAttackSimulationResult);
+  await runTest('Privacy-Utility Curve', testPrivacyUtilityCurve);
+  await runTest('Curve Visualization', testCurveVisualization);
+  await runTest('Governance Dashboard', testGovernanceDashboard);
   
   // Summary
   console.log('\n╔════════════════════════════════════════════════════════════╗');
