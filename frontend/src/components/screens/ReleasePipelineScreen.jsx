@@ -40,40 +40,13 @@ const ReleasePipelineScreen = () => {
 
   const fetchData = async () => {
     setLoading(true);
-    try {
-      const [datasetsRes, releasesRes] = await Promise.all([
-        ingestionAPI.getDatasets(),
-        releaseAPI.getReleases()
-      ]);
-
-      if (datasetsRes.data?.datasets && datasetsRes.data.datasets.length > 0) {
-        setDatasets(datasetsRes.data.datasets);
-        setSelectedDataset(datasetsRes.data.datasets[0].id);
-      } else {
-        setDatasets(sampleDatasets);
-        setSelectedDataset(sampleDatasets[0].id);
-      }
-
-      if (releasesRes.data?.releases && releasesRes.data.releases.length > 0) {
-        setReleases(releasesRes.data.releases);
-        setCurrentRelease(releasesRes.data.releases[0]);
-        updateStagesFromRelease(releasesRes.data.releases[0]);
-      } else {
-        setReleases(sampleReleases);
-        setCurrentRelease(sampleReleases[0]);
-        updateStagesFromRelease(sampleReleases[0]);
-      }
-    } catch (error) {
-      console.error('Failed to fetch data:', error);
-      // Fallback to sample data
-      setDatasets(sampleDatasets);
-      setSelectedDataset(sampleDatasets[0].id);
-      setReleases(sampleReleases);
-      setCurrentRelease(sampleReleases[0]);
-      updateStagesFromRelease(sampleReleases[0]);
-    } finally {
-      setLoading(false);
-    }
+    // Always use sample data to keep demo data separate from ingested data
+    setDatasets(sampleDatasets);
+    setSelectedDataset(sampleDatasets[0].id);
+    setReleases(sampleReleases);
+    setCurrentRelease(sampleReleases[0]);
+    updateStagesFromRelease(sampleReleases[0]);
+    setLoading(false);
   };
 
   const updateStagesFromRelease = (release) => {

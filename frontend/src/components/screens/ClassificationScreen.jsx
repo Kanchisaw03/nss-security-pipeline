@@ -54,6 +54,47 @@ const FIELD_TYPES = {
   },
 };
 
+// Sample datasets for demonstration
+const sampleDatasets = [
+  { id: 'demo-healthcare-001', filename: 'Healthcare Records', recordCount: 200, fieldCount: 12, status: 'raw' },
+  { id: 'demo-financial-002', filename: 'Financial Transactions', recordCount: 500, fieldCount: 15, status: 'raw' },
+  { id: 'demo-hr-003', filename: 'HR Employee Data', recordCount: 150, fieldCount: 18, status: 'raw' },
+];
+
+// Sample fields for demonstration
+const sampleFieldsData = {
+  'demo-healthcare-001': [
+    { name: 'patient_id', type: 'DIRECT_IDENTIFIER', confidence: 0.98 },
+    { name: 'email', type: 'DIRECT_IDENTIFIER', confidence: 0.95 },
+    { name: 'age', type: 'QUASI_IDENTIFIER', confidence: 0.88 },
+    { name: 'zip_code', type: 'QUASI_IDENTIFIER', confidence: 0.85 },
+    { name: 'gender', type: 'QUASI_IDENTIFIER', confidence: 0.82 },
+    { name: 'diagnosis', type: 'SENSITIVE', confidence: 0.92 },
+    { name: 'treatment', type: 'SENSITIVE', confidence: 0.89 },
+    { name: 'admission_date', type: 'SAFE', confidence: 0.78 },
+    { name: 'hospital_name', type: 'SAFE', confidence: 0.85 },
+    { name: 'doctor_notes', type: 'SENSITIVE', confidence: 0.91 },
+    { name: 'insurance_type', type: 'SAFE', confidence: 0.75 },
+    { name: 'room_number', type: 'SAFE', confidence: 0.80 },
+  ],
+  'demo-financial-002': [
+    { name: 'account_number', type: 'DIRECT_IDENTIFIER', confidence: 0.99 },
+    { name: 'ssn', type: 'DIRECT_IDENTIFIER', confidence: 0.99 },
+    { name: 'transaction_amount', type: 'SENSITIVE', confidence: 0.85 },
+    { name: 'merchant_category', type: 'SAFE', confidence: 0.78 },
+    { name: 'transaction_date', type: 'SAFE', confidence: 0.80 },
+    { name: 'city', type: 'QUASI_IDENTIFIER', confidence: 0.82 },
+  ],
+  'demo-hr-003': [
+    { name: 'employee_id', type: 'DIRECT_IDENTIFIER', confidence: 0.97 },
+    { name: 'full_name', type: 'DIRECT_IDENTIFIER', confidence: 0.96 },
+    { name: 'salary', type: 'SENSITIVE', confidence: 0.94 },
+    { name: 'department', type: 'QUASI_IDENTIFIER', confidence: 0.80 },
+    { name: 'job_title', type: 'QUASI_IDENTIFIER', confidence: 0.78 },
+    { name: 'hire_date', type: 'SAFE', confidence: 0.75 },
+  ],
+};
+
 const ClassificationScreen = () => {
   const [selectedField, setSelectedField] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -66,47 +107,19 @@ const ClassificationScreen = () => {
   const [showDataPreview, setShowDataPreview] = useState(false);
 
   useEffect(() => {
-    fetchDatasets();
-  }, []);
-
-  const fetchDatasets = async () => {
-    try {
-      const response = await ingestionAPI.getDatasets();
-      if (response.data && response.data.datasets) {
-        setDatasets(response.data.datasets);
-        if (response.data.datasets.length > 0) {
-          setSelectedDataset(response.data.datasets[0].id);
-          // Auto-load fields from first dataset - fields are at top level, not in metadata
-          const firstDataset = response.data.datasets[0];
-          const fieldNames = firstDataset.fields || firstDataset.metadata?.fields;
-          if (fieldNames) {
-            loadFieldsFromMetadata(fieldNames);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch datasets:', error);
+    // Always use sample datasets to keep demo data separate from ingested data
+    setDatasets(sampleDatasets);
+    if (sampleDatasets.length > 0) {
+      const firstDatasetId = sampleDatasets[0].id;
+      setSelectedDataset(firstDatasetId);
+      setFields(sampleFieldsData[firstDatasetId] || []);
     }
-  };
-
-  const loadFieldsFromMetadata = (fieldNames) => {
-    // Create basic field objects from field names
-    const basicFields = fieldNames.map(name => ({
-      name,
-      type: 'SAFE', // Default to SAFE
-      confidence: 0.75
-    }));
-    setFields(basicFields);
-  };
+  }, []);
 
   const handleDatasetChange = async (datasetId) => {
     setSelectedDataset(datasetId);
-    const dataset = datasets.find(d => d.id === datasetId);
-    // Fields are at top level, not in metadata
-    const fieldNames = dataset?.fields || dataset?.metadata?.fields;
-    if (fieldNames) {
-      loadFieldsFromMetadata(fieldNames);
-    }
+    // Use sample fields data for the selected dataset
+    setFields(sampleFieldsData[datasetId] || []);
   };
 
   const handleRunClassification = async () => {

@@ -142,29 +142,9 @@ const AttackLabScreen = () => {
   }, []);
 
   const fetchDatasetsAndReleases = async () => {
-    try {
-      const [datasetsRes, releasesRes] = await Promise.all([
-        ingestionAPI.getDatasets(),
-        releaseAPI.getReleases()
-      ]);
-
-      if (datasetsRes.data?.datasets) {
-        setDatasets(datasetsRes.data.datasets);
-      }
-      if (releasesRes.data?.releases && releasesRes.data.releases.length > 0) {
-        setReleases(releasesRes.data.releases);
-        setSelectedRelease(releasesRes.data.releases[0].id);
-      } else {
-        // Use sample releases if no real releases available
-        setReleases(sampleReleases);
-        setSelectedRelease(sampleReleases[0].id);
-      }
-    } catch (error) {
-      console.error('Failed to fetch data:', error);
-      // Fallback to sample releases
-      setReleases(sampleReleases);
-      setSelectedRelease(sampleReleases[0].id);
-    }
+    // Always use sample releases to keep demo data separate from ingested data
+    setReleases(sampleReleases);
+    setSelectedRelease(sampleReleases[0].id);
   };
 
   const handleRunSimulation = async () => {

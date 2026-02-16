@@ -92,31 +92,9 @@ const AuditChainScreen = () => {
 
   const fetchAuditEvents = async () => {
     setLoading(true);
-    try {
-      const response = await auditAPI.getEvents({ limit: 50 });
-      if (response.data && response.data.events && response.data.events.length > 0) {
-        // Transform audit events into blockchain-like blocks
-        const transformedBlocks = response.data.events.map((event, idx) => ({
-          id: event.id || `BLK-${idx + 1}`,
-          timestamp: event.timestamp || new Date().toISOString(),
-          event: event.type || 'Unknown Event',
-          user: event.userId || 'system',
-          hash: event.hash || `hash-${Math.random().toString(36).substr(2, 8)}`,
-          prevHash: idx === 0 ? '0000000000' : `hash-${Math.random().toString(36).substr(2, 8)}`,
-          data: event.details || event
-        }));
-        setBlocks(transformedBlocks);
-      } else {
-        // Use sample blocks if no real events
-        setBlocks(sampleBlocks);
-      }
-    } catch (error) {
-      console.error('Failed to fetch audit events:', error);
-      // Fallback to sample blocks
-      setBlocks(sampleBlocks);
-    } finally {
-      setLoading(false);
-    }
+    // Always use sample blocks to keep demo data separate from ingested data
+    setBlocks(sampleBlocks);
+    setLoading(false);
   };
 
   const validateChain = async () => {

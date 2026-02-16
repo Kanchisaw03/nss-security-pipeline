@@ -43,14 +43,7 @@ const ReportsScreen = () => {
   }, []);
 
   const fetchDatasets = async () => {
-    try {
-      const response = await ingestionAPI.getDatasets();
-      if (response.data && response.data.datasets) {
-        setDatasets(response.data.datasets);
-      }
-    } catch (error) {
-      console.error('Failed to fetch datasets:', error);
-    }
+    // No need to fetch datasets - we'll use sample reports directly
   };
 
   // Sample reports for demonstration
@@ -83,38 +76,9 @@ const ReportsScreen = () => {
 
   const fetchReports = async () => {
     setLoading(true);
-    try {
-      // Fetch reports for each dataset
-      const reportPromises = datasets.map(async (dataset) => {
-        try {
-          const response = await reportAPI.getBenchmark(dataset.id);
-          return {
-            id: `RPT-${dataset.id}`,
-            name: `Benchmark Report - ${dataset.id}`,
-            date: new Date().toISOString().split('T')[0],
-            type: 'Benchmark',
-            dataset: dataset.id,
-            ...response.data
-          };
-        } catch (err) {
-          return null;
-        }
-      });
-
-      const fetchedReports = (await Promise.all(reportPromises)).filter(Boolean);
-      if (fetchedReports.length > 0) {
-        setReports(fetchedReports);
-      } else {
-        // Use sample reports if no real reports
-        setReports(sampleReports);
-      }
-    } catch (error) {
-      console.error('Failed to fetch reports:', error);
-      // Fallback to sample reports
-      setReports(sampleReports);
-    } finally {
-      setLoading(false);
-    }
+    // Always use sample reports to keep demo data separate from ingested data
+    setReports(sampleReports);
+    setLoading(false);
   };
 
   const handleGenerateReport = async () => {

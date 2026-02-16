@@ -107,21 +107,9 @@ const RiskEngineScreen = () => {
   }, []);
 
   const fetchDatasets = async () => {
-    try {
-      const response = await ingestionAPI.getDatasets();
-      if (response.data && response.data.datasets && response.data.datasets.length > 0) {
-        setDatasets(response.data.datasets);
-        setSelectedDataset(response.data.datasets[0].id);
-      } else {
-        // Use sample datasets if no real datasets available
-        setDatasets(sampleDatasets);
-        setSelectedDataset(sampleDatasets[0].id);
-      }
-    } catch (error) {
-      console.error('Failed to fetch datasets:', error);
-      setDatasets(sampleDatasets);
-      setSelectedDataset(sampleDatasets[0].id);
-    }
+    // Always use sample datasets to keep demo data separate from ingested data
+    setDatasets(sampleDatasets);
+    setSelectedDataset(sampleDatasets[0].id);
   };
 
   const fetchRiskData = async () => {
